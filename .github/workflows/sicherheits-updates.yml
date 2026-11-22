@@ -1,0 +1,31 @@
+# Jeden Montag früh: Anmelde-Bibliothek (supabase-js) auf die neueste sichere 2.x-Version bringen.
+# Bei einem Update wird die Seite neu veröffentlicht; die App auf allen Geräten holt es sich von selbst.
+# Schlägt etwas fehl, schickt GitHub eine E-Mail.
+name: Sicherheits-Updates
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+concurrency: sicherheits-updates
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - id: up
+        run: node .github/scripts/update-supabase.js
+      - if: steps.up.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.up.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add supabase-version.json index.html sw.js
+          git commit -m "Sicherheits-Update: supabase-js $VERSION"
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true

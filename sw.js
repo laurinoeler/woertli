@@ -1,6 +1,6 @@
 /* Offline-Speicher für «Wörtli üben»: die App läuft auch ohne Internet.
    Die Versionsnummer setzt build-web.js bei jedem Bauen neu, dann holen sich alle Geräte das Update. */
-const CACHE = "woertli-20261122-152858";
+const CACHE = "woertli-20261122-161033";
 const FILES = ["./", "./index.html", "./kuh.jpg", "./manifest.webmanifest",
                "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png", "./auth.js", "./auth.css", "./config.js"];
 

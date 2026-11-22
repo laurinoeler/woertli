@@ -1,0 +1,7 @@
+# Hält die GitHub-Werkzeuge (actions/checkout) aktuell: Dependabot schlägt Updates als Pull Request vor.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
