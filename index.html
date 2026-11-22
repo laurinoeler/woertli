@@ -2,7 +2,7 @@
 <html lang="de-CH">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-ZJ7tcIjPFBdRMJb2kCmXrodTvH2fbiGMbTAjra9AxX8=' 'sha256-axiTvuxEMtDJavQXiuD9hE3DTVHoysJjI55wOqVHvbI=' 'sha256-HK5jKVSC8fQQ592ky02jxilZNaOtyEgoImrFjXGOwk4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self' https://wwvrrgojdudvroicqntx.supabase.co wss://wwvrrgojdudvroicqntx.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'sha256-ZJ7tcIjPFBdRMJb2kCmXrodTvH2fbiGMbTAjra9AxX8=' 'sha256-Nid1Kkvke0R+WnzErw+8TIgx31/1NAmQWPMMXlayVrA=' 'sha256-HK5jKVSC8fQQ592ky02jxilZNaOtyEgoImrFjXGOwk4='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self' https://wwvrrgojdudvroicqntx.supabase.co wss://wwvrrgojdudvroicqntx.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Englisch-Wörtli lernen: anschauen, hören, schreiben, Sätze und Test.">
 <meta name="theme-color" content="#1747a6">
@@ -637,6 +637,8 @@ function voiceScore(v, lang){
   if(lang==="en" && l==="en-us") s+=10;
   if(!v.localService) s+=5;
   if(/compact|espeak/i.test(n)) s-=40;
+  // Spass-Stimmen auf iPad/iPhone/Mac (Roboter, Glocken, Flüstern …) nie nehmen
+  if(/^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|pipe organ|grandma|grandpa|rocko|shelley|sandy|reed|eddy|flo|junior|ralph|fred|kathy)\b/i.test(n)) s-=100;
   // Mehrsprachige Stimmen raten die Sprache selbst und lesen kurze englische Wörter manchmal deutsch.
   if(/multilingual|multi-lingual/i.test(n)) s-=80;
   // Für Englisch: echte britische oder amerikanische Stimmen bevorzugen
@@ -654,7 +656,9 @@ function showVoiceInfo(lang, v){
   const el=document.getElementById("voice-info"); if(!el) return;
   if(!v){
     el.className="msg bad";
-    el.innerHTML = lang==="en"
+    el.innerHTML = lang==="en" && IS_IOS
+      ? "Auf diesem Gerät gibt es keine englische Stimme. So holst du eine: Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Englisch → eine Stimme laden."
+      : lang==="en"
       ? "Auf diesem Gerät gibt es keine englische Stimme. Darum klingt das Wort falsch. So holst du eine: Windows-Einstellungen → Zeit und Sprache → Sprache → «Englisch (Vereinigtes Königreich)» hinzufügen, mit Sprachausgabe. Oder öffne das Programm im Edge-Browser."
       : "Auf diesem Gerät gibt es keine deutsche Stimme.";
   } else {
@@ -664,6 +668,17 @@ function showVoiceInfo(lang, v){
   el.hidden=false;
 }
 let speakTimer=null, actx=null;
+// iPad/iPhone: Safari spricht erst, wenn die Sprachausgabe einmal direkt bei einem Fingertipp gestartet wurde.
+// Darum beim ersten Tippen ganz kurz etwas (fast) Lautloses sprechen. Danach klappt das Vorlesen auch später von selbst.
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+let speechUnlocked = false;
+function unlockSpeech(){
+  if(speechUnlocked || !window.speechSynthesis) return;
+  speechUnlocked = true;
+  try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0.01; u.rate=1; speechSynthesis.speak(u); }catch(e){}
+  try{ const AC=window.AudioContext||window.webkitAudioContext; if(AC){ actx=actx||new AC(); if(actx.state==="suspended") actx.resume(); } }catch(e){}
+}
+if(IS_IOS) ["touchend","pointerup","click","keydown"].forEach(ev => document.addEventListener(ev, unlockSpeech, {capture:true, passive:true}));
 function wakeAudio(sec){
   // spielt Stille ab, damit die Lautsprecher eingeschaltet sind, bevor das Wort kommt
   try{
@@ -703,6 +718,7 @@ function speak(text, lang, rate, times){
         const u=mk(text, 1, r); if(vv){ u.voice=vv; u.lang=vv.lang; }
         u.onstart=()=>status("");
         u.onend=()=>{ status(""); if(n>1) speakTimer=setTimeout(()=>sayV(n-1), 1200); };
+        try{ if(speechSynthesis.paused) speechSynthesis.resume(); }catch(e){}   // Safari hängt manchmal im Pause-Zustand
         speechSynthesis.speak(u);
       };
       status(""); sayV(times||1);
